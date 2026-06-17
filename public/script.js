@@ -72,24 +72,24 @@ socket.on("playVideo", () => {
   video.style.display = "block";
   video.src = "/video1.mp4";
   
-  // Tenta reproduzir. Se o navegador bloquear, ele avisa no console, mas NÃO pula pro timer.
+  // TENTA tocar com som primeiro. Se o navegador bloquear, roda mutado na TV secundária
   video.play().catch(e => {
-    console.warn("Navegador bloqueou o autoplay nesta TV. Lembre-se de clicar na tela antes do jogo começar.", e);
+    console.warn("Autoplay bloqueado nesta TV. Rodando vídeo sem som para manter sincronia visual.");
+    video.muted = true; 
+    video.play().catch(err => console.error("Erro fatal no vídeo:", err));
   });
   
   video.onended = () => {
     if (video.src.includes("video1.mp4")) {
-      // Pula para o vídeo 2
       video.src = "/video2.mp4";
       video.play().catch(e => console.warn(e));
     } else {
-      // Vídeo 2 terminou! Avisa o servidor para liberar o cronômetro para TODO MUNDO.
       socket.emit("videoEnded");
     }
   };
 });
 
-// -- CRONÔMETRO E GLITCH --
+// -- CRONÔMETRO E GLITCH SINCRONIZADO --
 socket.on("startTimer", (startTime) => {
   iniciarContador(startTime);
 });
@@ -99,8 +99,9 @@ function iniciarContador(startTime) {
   startScreen.style.display = "none";
   enigmaScreen.style.display = "block";
   
-  // Toca os ruidos de erro (glitch) de fundo em loop
+  // Garante que todas as TVs comecem o ruído do zero no exato mesmo milissegundo
   audiosGlitch.forEach(audio => {
+    audio.currentTime = 0; 
     audio.play().catch(e => console.warn("Erro ao tocar glitch:", e));
   });
   
@@ -124,14 +125,16 @@ function iniciarContador(startTime) {
 
 // -- SUCESSO E FALHA --
 socket.on("accessDenied", () => {
-  document.body.classList.add("glitch-active");
+  // Adiciona o glitch E o fundo vermelho vivo
+  document.body.classList.add("glitch-active", "error-state");
   
-  // Toca som aleatório de erro
   let randomSound = audiosDenied[Math.floor(Math.random() * audiosDenied.length)];
+  randomSound.currentTime = 0; // Sincroniza o áudio de erro
   randomSound.play().catch(e => console.warn(e));
   
   setTimeout(() => {
-    document.body.classList.remove("glitch-active");
+    // Tira o glitch e o vermelho, voltando ao verde hacker
+    document.body.classList.remove("glitch-active", "error-state");
     inputs.forEach(i => i.value = "");
     inputs[0].focus();
   }, 2000);
@@ -149,10 +152,12 @@ function ativarSucesso() {
   video.style.display = "none";
   enigmaScreen.style.display = "block";
   
-  // Para os barulhos assustadores
   audiosGlitch.forEach(a => a.pause());
   
-  // Toca acesso concedido e a porta destrancando
+  audioGranted.currentTime = 0;
   audioGranted.play().catch(e => console.warn(e));
-  audioGranted.onended = () => audioUnlock.play().catch(e => console.warn(e));
+  audioGranted.onended = () => {
+    audioUnlock.currentTime = 0;
+    audioUnlock.play().catch(e => console.warn(e));
+  };
 }

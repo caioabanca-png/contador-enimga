@@ -1,7 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
 
+/* ESTADO PADRÃO: Ambiente Hacker Verde */
 body {
-  background-color: #050505;
+  background-color: #021a02; /* Fundo verde muito escuro */
+  /* Efeito de linhas de código horizontais fracas de fundo */
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(0, 255, 0, 0.03),
+    rgba(0, 255, 0, 0.03) 2px,
+    transparent 2px,
+    transparent 4px
+  );
   color: #0f0;
   font-family: 'Share Tech Mono', monospace;
   display: flex;
@@ -10,6 +19,7 @@ body {
   height: 100vh;
   margin: 0;
   overflow: hidden;
+  transition: background-color 0.2s, color 0.2s; /* Transição suave de cores */
 }
 
 video {
@@ -20,6 +30,7 @@ video {
   position: absolute;
   top: 0;
   left: 0;
+  z-index: 50; /* Fica acima de tudo quando toca */
 }
 
 #enigma-screen {
@@ -27,11 +38,13 @@ video {
   z-index: 10;
 }
 
+/* O cronômetro fica branco com brilho verde para dar contraste */
 #timer {
   font-size: 150px;
-  color: #ff003c; /* Cor base do timer baseada na sua imagem */
-  text-shadow: 0 0 20px #ff003c;
+  color: #ffffff; 
+  text-shadow: 0 0 25px #00ff00;
   margin-bottom: 50px;
+  transition: all 0.3s;
 }
 
 .inputs {
@@ -47,10 +60,11 @@ video {
   background: transparent;
   border: none;
   border-bottom: 4px solid #0f0;
-  color: #0f0;
+  color: #ffffff; /* Número digitado fica em destaque */
   font-size: 50px;
   text-align: center;
   font-family: 'Share Tech Mono', monospace;
+  transition: all 0.3s;
 }
 
 .pwd-input:focus { outline: none; border-bottom-color: #fff; }
@@ -68,21 +82,63 @@ button {
 
 button:hover { background: #0f0; color: #000; }
 
-/* Animação de Glitch Básica */
+/* -------------------------------------- */
+/* ESTADO DE ERRO: Vermelho Vivo + Glitch */
+/* -------------------------------------- */
+body.error-state {
+  background-color: #ff0000; /* Vermelho sangue vivo */
+  background-image: none; /* Tira as linhas para o vermelho berrar na sala */
+  color: #ffffff;
+}
+
+body.error-state #timer {
+  color: #ffffff;
+  text-shadow: 0 0 30px #000000; /* Sombra preta dramática */
+}
+
+body.error-state .pwd-input {
+  border-bottom-color: #ffffff;
+  color: #ffffff;
+}
+
+body.error-state button {
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
 .glitch-active {
   animation: glitch-skew 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
 }
 
 @keyframes glitch-skew {
   0% { transform: skew(0deg); }
-  20% { transform: skew(-10deg); }
-  40% { transform: skew(10deg); }
-  60% { transform: skew(-5deg); }
+  20% { transform: skew(-15deg); filter: blur(2px); }
+  40% { transform: skew(15deg); }
+  60% { transform: skew(-5deg); filter: blur(0px); }
   80% { transform: skew(5deg); }
   100% { transform: skew(0deg); }
 }
 
-/* Estado de Sucesso */
-body.success { background-color: #001a00; }
-body.success #timer { color: #fff; text-shadow: 0 0 20px #0f0; }
-body.success .pwd-input { border-bottom-color: #fff; color: #fff; }
+/* -------------------------------------- */
+/* ESTADO DE SUCESSO: Branco da Salvação   */
+/* -------------------------------------- */
+body.success { 
+  background-color: #ffffff; 
+  background-image: none;
+  color: #000000; 
+}
+
+body.success #timer { 
+  color: #000000; 
+  text-shadow: none; /* Tira o brilho hacker */
+}
+
+body.success .pwd-input { 
+  border-bottom-color: #000000; 
+  color: #000000; 
+}
+
+body.success button {
+  border-color: #000000;
+  color: #000000;
+}
