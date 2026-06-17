@@ -46,19 +46,41 @@ function checkPassword() {
 socket.on("playVideo", () => {
   startScreen.style.display = "none";
   video.style.display = "block";
-  video.play();
+  video.src = "/video1.mp4"; // Garante que inicia no vídeo 1
   
+  video.play().catch(e => {
+    console.error("Erro ao reproduzir o vídeo. Navegador bloqueou ou arquivo não encontrado.", e);
+    pularParaEnigma(); // Se der erro, não trava na tela preta!
+  });
+  
+  // Lógica dos 2 vídeos
   video.onended = () => {
-    video.style.display = "none";
-    enigmaScreen.style.display = "block";
-    socket.emit("startTimer"); // Pede para iniciar o timer
-    audiosGlitch[Math.floor(Math.random() * 2)].play(); // Inicia som de fundo
+    if (video.src.includes("video1.mp4")) {
+      // Se terminou o vídeo 1, roda o vídeo 2
+      video.src = "/video2.mp4";
+      video.play().catch(e => pularParaEnigma());
+    } else {
+      // Se terminou o vídeo 2, vai para o timer
+      pularParaEnigma();
+    }
   };
+  
+  // Segurança extra: se o vídeo der um erro fatal de carregamento
+  video.onerror = () => pularParaEnigma();
 });
+
+// Função para iniciar o contador e liberar a tela
+function pularParaEnigma() {
+  video.style.display = "none";
+  enigmaScreen.style.display = "block";
+  socket.emit("startTimer"); // Pede para iniciar o timer na rede
+  audiosGlitch[Math.floor(Math.random() * 2)].play().catch(e=>console.log(e)); // Inicia som de fundo
+}
 
 socket.on("startTimer", (startTime) => {
   enigmaScreen.style.display = "block";
   startScreen.style.display = "none";
+  video.style.display = "none";
   
   clearInterval(countdownInterval);
   countdownInterval = setInterval(() => {
@@ -81,7 +103,7 @@ socket.on("startTimer", (startTime) => {
 socket.on("accessDenied", () => {
   document.body.classList.add("glitch-active");
   let randomSound = audiosDenied[Math.floor(Math.random() * audiosDenied.length)];
-  randomSound.play();
+  randomSound.play().catch(e=>console.log(e));
   
   setTimeout(() => {
     document.body.classList.remove("glitch-active");
@@ -95,6 +117,6 @@ socket.on("accessGranted", () => {
   document.body.classList.add("success");
   audiosGlitch.forEach(a => a.pause());
   
-  audioGranted.play();
-  audioGranted.onended = () => audioUnlock.play();
+  audioGranted.play().catch(e=>console.log(e));
+  audioGranted.onended = () => audioUnlock.play().catch(e=>console.log(e));
 });

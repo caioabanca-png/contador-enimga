@@ -1,12 +1,10 @@
 const express = require("express");
+const path = require("path");
 const app = express();
 const http = require("http").createServer(app);
 const io = require("socket.io")(http);
 
 app.use(express.static("public"));
-
-// Força o servidor a enviar o index.html quando acessar a URL principal
-const path = require('path');
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
@@ -20,7 +18,6 @@ let gameState = {
 };
 
 io.on("connection", (socket) => {
-  // Envia o estado atual para quem acabou de conectar
   socket.emit("updateState", gameState);
 
   socket.on("startVideo", () => {
@@ -46,6 +43,7 @@ io.on("connection", (socket) => {
   });
 });
 
-http.listen(process.env.PORT, () => {
-  console.log("Servidor rodando!");
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}!`);
 });
