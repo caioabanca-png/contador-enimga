@@ -10,7 +10,6 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// Estado inicial do jogo
 let defaultState = {
   videoPlayed: false,
   timerStarted: false,
@@ -21,18 +20,17 @@ let defaultState = {
 let gameState = { ...defaultState };
 
 io.on("connection", (socket) => {
-  // Manda o estado atual para quem conectar
   socket.emit("updateState", gameState);
 
   socket.on("startVideo", () => {
-    // TRAVA: Só reproduz se o vídeo ainda não tiver sido iniciado por ninguém
     if (!gameState.videoPlayed) {
       gameState.videoPlayed = true;
       io.emit("playVideo");
     }
   });
 
-  socket.on("startTimer", () => {
+  // O servidor agora escuta o fim do vídeo para iniciar o cronômetro globalmente
+  socket.on("videoEnded", () => {
     if (!gameState.timerStarted) {
       gameState.timerStarted = true;
       gameState.startTime = Date.now();
@@ -49,11 +47,10 @@ io.on("connection", (socket) => {
     }
   });
 
-  // FUNÇÃO ADMIN: Reseta o servidor e avisa todas as TVs para recarregarem
   socket.on("adminReset", (pwd) => {
     if (pwd === "1706") {
-      gameState = { ...defaultState }; // Zera a memória do servidor
-      io.emit("systemReset"); // Avisa todos os clientes
+      gameState = { ...defaultState }; 
+      io.emit("systemReset"); 
     }
   });
 });

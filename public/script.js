@@ -20,9 +20,9 @@ const audioUnlock = document.getElementById("audio-unlock");
 
 let countdownInterval;
 
-// -- LÓGICA DE ADMIN --
+// -- LÓGICA DE ADMIN (REINICIAR) --
 btnAdmin.addEventListener("click", () => {
-  let pwd = prompt("Resetar sequencia de autodestruição. Digite a senha:");
+  let pwd = prompt("Permissão necessária. Digite a senha:");
   if (pwd === "1706") {
     socket.emit("adminReset", pwd);
   } else if (pwd !== null) {
@@ -30,12 +30,11 @@ btnAdmin.addEventListener("click", () => {
   }
 });
 
-// Força a página a dar um F5 real e limpo quando o Admin acionar o reset
 socket.on("systemReset", () => {
   window.location.reload(); 
 });
 
-// -- LÓGICA DOS INPUTS E BOTÕES --
+// -- LÓGICA DA SENHA --
 inputs.forEach((input, index) => {
   input.addEventListener("input", (e) => {
     input.value = input.value.replace(/[^0-9]/g, '');
@@ -58,56 +57,52 @@ function checkPassword() {
   if(pwd.length === 6) socket.emit("tryPassword", pwd);
 }
 
-// -- RECUPERAR ESTADO AO ABRIR A PÁGINA OU DAR F5 SEM QUERER --
+// -- RECUPERAR ESTADO --
 socket.on("updateState", (state) => {
   if (state.solved) {
-    // Se já foi resolvido, mostra a tela verde direto
     ativarSucesso();
   } else if (state.timerStarted) {
-    // Se o timer já começou, pula o vídeo e vai pro enigma
     iniciarContador(state.startTime);
   }
 });
 
-// -- EVENTOS DE VÍDEO E SINCRONIZAÇÃO --
+// -- REPRODUÇÃO E SINCRONIZAÇÃO DE VÍDEO --
 socket.on("playVideo", () => {
   startScreen.style.display = "none";
   video.style.display = "block";
   video.src = "/video1.mp4";
   
+  // Tenta reproduzir. Se o navegador bloquear, ele avisa no console, mas NÃO pula pro timer.
   video.play().catch(e => {
-    console.error("Erro no vídeo", e);
-    pularParaEnigma(); 
+    console.warn("Navegador bloqueou o autoplay nesta TV. Lembre-se de clicar na tela antes do jogo começar.", e);
   });
   
   video.onended = () => {
     if (video.src.includes("video1.mp4")) {
+      // Pula para o vídeo 2
       video.src = "/video2.mp4";
-      video.play().catch(e => pularParaEnigma());
+      video.play().catch(e => console.warn(e));
     } else {
-      pularParaEnigma();
+      // Vídeo 2 terminou! Avisa o servidor para liberar o cronômetro para TODO MUNDO.
+      socket.emit("videoEnded");
     }
   };
-  
-  video.onerror = () => pularParaEnigma();
 });
 
-function pularParaEnigma() {
-  video.style.display = "none";
-  enigmaScreen.style.display = "block";
-  socket.emit("startTimer"); 
-  audiosGlitch[Math.floor(Math.random() * 2)].play().catch(e=>console.log(e));
-}
-
-// -- CRONÔMETRO --
+// -- CRONÔMETRO E GLITCH --
 socket.on("startTimer", (startTime) => {
   iniciarContador(startTime);
 });
 
 function iniciarContador(startTime) {
-  enigmaScreen.style.display = "block";
-  startScreen.style.display = "none";
   video.style.display = "none";
+  startScreen.style.display = "none";
+  enigmaScreen.style.display = "block";
+  
+  // Toca os ruidos de erro (glitch) de fundo em loop
+  audiosGlitch.forEach(audio => {
+    audio.play().catch(e => console.warn("Erro ao tocar glitch:", e));
+  });
   
   clearInterval(countdownInterval);
   countdownInterval = setInterval(() => {
@@ -130,8 +125,10 @@ function iniciarContador(startTime) {
 // -- SUCESSO E FALHA --
 socket.on("accessDenied", () => {
   document.body.classList.add("glitch-active");
+  
+  // Toca som aleatório de erro
   let randomSound = audiosDenied[Math.floor(Math.random() * audiosDenied.length)];
-  randomSound.play().catch(e=>console.log(e));
+  randomSound.play().catch(e => console.warn(e));
   
   setTimeout(() => {
     document.body.classList.remove("glitch-active");
@@ -152,7 +149,10 @@ function ativarSucesso() {
   video.style.display = "none";
   enigmaScreen.style.display = "block";
   
+  // Para os barulhos assustadores
   audiosGlitch.forEach(a => a.pause());
-  audioGranted.play().catch(e=>console.log(e));
-  audioGranted.onended = () => audioUnlock.play().catch(e=>console.log(e));
+  
+  // Toca acesso concedido e a porta destrancando
+  audioGranted.play().catch(e => console.warn(e));
+  audioGranted.onended = () => audioUnlock.play().catch(e => console.warn(e));
 }
