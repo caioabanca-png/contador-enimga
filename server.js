@@ -10,19 +10,26 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-let gameState = {
+// Estado inicial do jogo
+let defaultState = {
   videoPlayed: false,
   timerStarted: false,
   startTime: null,
   solved: false
 };
 
+let gameState = { ...defaultState };
+
 io.on("connection", (socket) => {
+  // Manda o estado atual para quem conectar
   socket.emit("updateState", gameState);
 
   socket.on("startVideo", () => {
-    gameState.videoPlayed = true;
-    io.emit("playVideo");
+    // TRAVA: Só reproduz se o vídeo ainda não tiver sido iniciado por ninguém
+    if (!gameState.videoPlayed) {
+      gameState.videoPlayed = true;
+      io.emit("playVideo");
+    }
   });
 
   socket.on("startTimer", () => {
@@ -34,11 +41,19 @@ io.on("connection", (socket) => {
   });
 
   socket.on("tryPassword", (pwd) => {
-    if (pwd === "142528") {
+    if (pwd === "142528" && !gameState.solved) {
       gameState.solved = true;
       io.emit("accessGranted");
-    } else {
+    } else if (!gameState.solved) {
       io.emit("accessDenied");
+    }
+  });
+
+  // FUNÇÃO ADMIN: Reseta o servidor e avisa todas as TVs para recarregarem
+  socket.on("adminReset", (pwd) => {
+    if (pwd === "1706") {
+      gameState = { ...defaultState }; // Zera a memória do servidor
+      io.emit("systemReset"); // Avisa todos os clientes
     }
   });
 });

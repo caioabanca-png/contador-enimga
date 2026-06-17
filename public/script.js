@@ -1,6 +1,7 @@
 const socket = io();
 
 const btnStart = document.getElementById("btn-start");
+const btnAdmin = document.getElementById("btn-admin");
 const startScreen = document.getElementById("start-screen");
 const video = document.getElementById("intro-video");
 const enigmaScreen = document.getElementById("enigma-screen");
@@ -19,10 +20,25 @@ const audioUnlock = document.getElementById("audio-unlock");
 
 let countdownInterval;
 
-// Navegação entre os inputs de senha
+// -- LÓGICA DE ADMIN --
+btnAdmin.addEventListener("click", () => {
+  let pwd = prompt("Resetar sequencia de autodestruição. Digite a senha:");
+  if (pwd === "1706") {
+    socket.emit("adminReset", pwd);
+  } else if (pwd !== null) {
+    alert("Acesso Negado.");
+  }
+});
+
+// Força a página a dar um F5 real e limpo quando o Admin acionar o reset
+socket.on("systemReset", () => {
+  window.location.reload(); 
+});
+
+// -- LÓGICA DOS INPUTS E BOTÕES --
 inputs.forEach((input, index) => {
   input.addEventListener("input", (e) => {
-    input.value = input.value.replace(/[^0-9]/g, ''); // Apenas números
+    input.value = input.value.replace(/[^0-9]/g, '');
     if (input.value && index < inputs.length - 1) inputs[index + 1].focus();
   });
   input.addEventListener("keydown", (e) => {
@@ -42,42 +58,53 @@ function checkPassword() {
   if(pwd.length === 6) socket.emit("tryPassword", pwd);
 }
 
-// Eventos do Servidor (Sincronização)
+// -- RECUPERAR ESTADO AO ABRIR A PÁGINA OU DAR F5 SEM QUERER --
+socket.on("updateState", (state) => {
+  if (state.solved) {
+    // Se já foi resolvido, mostra a tela verde direto
+    ativarSucesso();
+  } else if (state.timerStarted) {
+    // Se o timer já começou, pula o vídeo e vai pro enigma
+    iniciarContador(state.startTime);
+  }
+});
+
+// -- EVENTOS DE VÍDEO E SINCRONIZAÇÃO --
 socket.on("playVideo", () => {
   startScreen.style.display = "none";
   video.style.display = "block";
-  video.src = "/video1.mp4"; // Garante que inicia no vídeo 1
+  video.src = "/video1.mp4";
   
   video.play().catch(e => {
-    console.error("Erro ao reproduzir o vídeo. Navegador bloqueou ou arquivo não encontrado.", e);
-    pularParaEnigma(); // Se der erro, não trava na tela preta!
+    console.error("Erro no vídeo", e);
+    pularParaEnigma(); 
   });
   
-  // Lógica dos 2 vídeos
   video.onended = () => {
     if (video.src.includes("video1.mp4")) {
-      // Se terminou o vídeo 1, roda o vídeo 2
       video.src = "/video2.mp4";
       video.play().catch(e => pularParaEnigma());
     } else {
-      // Se terminou o vídeo 2, vai para o timer
       pularParaEnigma();
     }
   };
   
-  // Segurança extra: se o vídeo der um erro fatal de carregamento
   video.onerror = () => pularParaEnigma();
 });
 
-// Função para iniciar o contador e liberar a tela
 function pularParaEnigma() {
   video.style.display = "none";
   enigmaScreen.style.display = "block";
-  socket.emit("startTimer"); // Pede para iniciar o timer na rede
-  audiosGlitch[Math.floor(Math.random() * 2)].play().catch(e=>console.log(e)); // Inicia som de fundo
+  socket.emit("startTimer"); 
+  audiosGlitch[Math.floor(Math.random() * 2)].play().catch(e=>console.log(e));
 }
 
+// -- CRONÔMETRO --
 socket.on("startTimer", (startTime) => {
+  iniciarContador(startTime);
+});
+
+function iniciarContador(startTime) {
   enigmaScreen.style.display = "block";
   startScreen.style.display = "none";
   video.style.display = "none";
@@ -98,8 +125,9 @@ socket.on("startTimer", (startTime) => {
     let seconds = Math.floor((remaining % (1000 * 60)) / 1000);
     timerEl.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   }, 1000);
-});
+}
 
+// -- SUCESSO E FALHA --
 socket.on("accessDenied", () => {
   document.body.classList.add("glitch-active");
   let randomSound = audiosDenied[Math.floor(Math.random() * audiosDenied.length)];
@@ -113,10 +141,18 @@ socket.on("accessDenied", () => {
 });
 
 socket.on("accessGranted", () => {
+  ativarSucesso();
+});
+
+function ativarSucesso() {
   clearInterval(countdownInterval);
   document.body.classList.add("success");
-  audiosGlitch.forEach(a => a.pause());
   
+  startScreen.style.display = "none";
+  video.style.display = "none";
+  enigmaScreen.style.display = "block";
+  
+  audiosGlitch.forEach(a => a.pause());
   audioGranted.play().catch(e=>console.log(e));
   audioGranted.onended = () => audioUnlock.play().catch(e=>console.log(e));
-});
+}
