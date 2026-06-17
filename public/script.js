@@ -15,6 +15,7 @@ const btnSubmit = document.getElementById("btn-submit");
 const audioBeep = document.getElementById("audio-beep");
 const audioBomb = document.getElementById("audio-bomb");
 const audioFinal = document.getElementById("audio-final");
+const audioCreepy = document.getElementById("audio-creepy"); // NOVO: Música de terror
 
 // Lista de sons de fundo para tocar em loop sequencial
 const bgSounds = [
@@ -23,10 +24,11 @@ const bgSounds = [
   audioBeep
 ];
 
-// ABAIXANDO O VOLUME DOS SONS DE FUNDO (0.3 = 30% do volume)
+// Configurando o volume dos áudios de fundo
 bgSounds.forEach(audio => {
-  if(audio) audio.volume = 0.1;
+  if(audio) audio.volume = 0.3; 
 });
+if(audioCreepy) audioCreepy.volume = 0.4; // Deixa o terror um pouco mais presente que o glitch
 
 const audiosDenied = [
   document.getElementById("audio-denied1"), 
@@ -64,11 +66,9 @@ inputs.forEach((input, index) => {
   input.addEventListener("input", (e) => {
     input.value = input.value.replace(/[^0-9]/g, '');
     
-    // Se digitou algo e não é o último campo, vai pro próximo
     if (input.value && index < inputs.length - 1) {
       inputs[index + 1].focus();
     } 
-    // AUTO-SUBMIT: Se digitou algo e é o ÚLTIMO campo, envia na hora!
     else if (input.value && index === inputs.length - 1) {
       emitPassword();
       checkPassword();
@@ -146,7 +146,6 @@ socket.on("startTimer", (startTime) => {
   iniciarContador(startTime);
 });
 
-// Função que faz o loop infinito dos áudios de fundo
 function tocarProximoFundo() {
   if (!document.body.classList.contains("enigma-mode")) return; 
   if (finalCountdownPlayed) return; 
@@ -178,7 +177,6 @@ function iniciarContador(startTime) {
     }
   });
 
-  // Inicia a sequência de áudios de fundo
   currentBgSoundIndex = 0;
   finalCountdownPlayed = false;
   tocarProximoFundo();
@@ -200,11 +198,23 @@ function iniciarContador(startTime) {
     let elapsed = now - startTime;
     let remaining = (30 * 60 * 1000) - elapsed; 
     
-    // Gatilho dos 20 segundos finais!
+    let minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    let seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+
+    // GATILHO: A cada 10 minutos exatos (Quando o cronômetro bater 20:00 e 10:00)
+    if ((minutes === 20 || minutes === 10) && seconds === 0) {
+      if (audioCreepy) {
+        audioCreepy.currentTime = 0;
+        audioCreepy.play().catch(e => console.warn(e));
+      }
+    }
+
+    // Gatilho dos 20 segundos finais
     if (remaining <= 20000 && remaining > 0 && !finalCountdownPlayed) {
       finalCountdownPlayed = true;
       
       bgSounds.forEach(a => { a.pause(); });
+      if (audioCreepy) audioCreepy.pause(); // Pausa o terror se estiver tocando
       
       let audioOffset = 20 - (remaining / 1000); 
       audioFinal.currentTime = audioOffset > 0 ? audioOffset : 0;
@@ -218,6 +228,7 @@ function iniciarContador(startTime) {
       timerEl.innerText = "00:00";
       
       audioFinal.pause();
+      if (audioCreepy) audioCreepy.pause();
       audioBomb.currentTime = 0;
       audioBomb.play().catch(e => console.warn(e));
       
@@ -228,8 +239,6 @@ function iniciarContador(startTime) {
       return;
     }
 
-    let minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-    let seconds = Math.floor((remaining % (1000 * 60)) / 1000);
     timerEl.innerText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   }, 1000);
 }
@@ -268,6 +277,7 @@ function ativarSucesso() {
   bgSounds.forEach(a => a.pause());
   audioFinal.pause();
   audioBomb.pause();
+  if (audioCreepy) audioCreepy.pause();
   
   audioGranted.currentTime = 0;
   audioGranted.play().catch(e => console.warn(e));
