@@ -22,9 +22,9 @@ const audioGranted = document.getElementById("audio-granted");
 const audioUnlock = document.getElementById("audio-unlock");
 
 let countdownInterval;
-let decodeInterval; // Variável da animação de decodificação hacker
+let decodeInterval; 
+let isInitiator = false; // Descobre qual tela clicou no Iniciar
 
-// -- LÓGICA DE ADMIN (REINICIAR) --
 btnAdmin.addEventListener("click", () => {
   let pwd = prompt("Permissão necessária. Digite a senha:");
   if (pwd === "1706") {
@@ -38,7 +38,6 @@ socket.on("systemReset", () => {
   window.location.reload(); 
 });
 
-// -- LÓGICA DE DIGITAÇÃO AND SINCRONIZAÇÃO --
 function emitPassword() {
   let pwd = Array.from(inputs).map(i => i.value || " ").join("");
   socket.emit("syncPassword", pwd);
@@ -48,7 +47,7 @@ inputs.forEach((input, index) => {
   input.addEventListener("input", (e) => {
     input.value = input.value.replace(/[^0-9]/g, '');
     if (input.value && index < inputs.length - 1) inputs[index + 1].focus();
-    emitPassword(); // Envia para a rede a cada dígito modificado
+    emitPassword(); 
   });
   input.addEventListener("keydown", (e) => {
     if (e.key === "Backspace" && !input.value && index > 0) {
@@ -60,17 +59,19 @@ inputs.forEach((input, index) => {
   });
 });
 
-// Atualiza a tela em tempo real com o que foi digitado em outra TV
 socket.on("updatePassword", (pwd) => {
   for(let i = 0; i < 6; i++) {
     let char = pwd[i];
     if(char) {
       inputs[i].value = (char !== " ") ? char : "";
+    } else {
+      inputs[i].value = "";
     }
   }
 });
 
 btnStart.addEventListener("click", () => {
+  isInitiator = true; // Avisa que esta tela foi a mestre que iniciou
   socket.emit("startVideo");
 });
 
@@ -81,7 +82,6 @@ function checkPassword() {
   if(pwd.length === 6) socket.emit("tryPassword", pwd);
 }
 
-// -- RECUPERAR ESTADO AO CONECTAR --
 socket.on("updateState", (state) => {
   if (state.solved) {
     ativarSucesso();
@@ -90,10 +90,16 @@ socket.on("updateState", (state) => {
   }
 });
 
-// -- REPRODUÇÃO E SINCRONIZAÇÃO DE VÍDEO --
+// -- REPRODUÇÃO DE VÍDEO --
 socket.on("playVideo", () => {
   startScreen.style.display = "none";
   video1.style.display = "block"; 
+  
+  // Se esta TV NÃO foi a que clicou em INICIAR, o vídeo roda mudo.
+  if (!isInitiator) {
+    video1.muted = true;
+    video2.muted = true;
+  }
   
   video1.play().catch(e => console.error("Erro autoplay vídeo 1:", e));
   
@@ -108,7 +114,7 @@ socket.on("playVideo", () => {
   };
 });
 
-// -- CRONÔMETRO E ELEMENTOS VISUAIS --
+// -- CRONÔMETRO --
 socket.on("startTimer", (startTime) => {
   iniciarContador(startTime);
 });
@@ -119,13 +125,9 @@ function iniciarContador(startTime) {
   startScreen.style.display = "none";
   enigmaScreen.style.display = "block";
   
-  // Ativa o modo de piscar neon verde leve nas TVs
   document.body.classList.add("enigma-mode");
-  
-  // Foca automaticamente no primeiro campo de texto do código
   setTimeout(() => { inputs[0].focus(); }, 100);
 
-  // Mantém o foco ativo caso cliquem fora da área de texto sem querer
   document.addEventListener("click", () => {
     if (document.body.classList.contains("enigma-mode")) {
       let firstEmpty = Array.from(inputs).find(i => !i.value);
@@ -134,13 +136,12 @@ function iniciarContador(startTime) {
     }
   });
 
-  // Inicializa e sincroniza os ruídos de fundo (glitch)
+  // Dá o play no áudio de fundo. (Requer o clique prévio na TV)
   audiosGlitch.forEach(audio => {
     audio.currentTime = 0; 
-    audio.play().catch(e => console.warn(e));
+    audio.play().catch(e => console.warn("Clique na TV para o áudio funcionar!", e));
   });
   
-  // -- EFEITO DE DECODIFICAÇÃO HACKER (NÚMEROS GIRANDO NO CAMPO VAZIO) --
   clearInterval(decodeInterval);
   decodeInterval = setInterval(() => {
     inputs.forEach(input => {
@@ -152,7 +153,6 @@ function iniciarContador(startTime) {
     });
   }, 80); 
   
-  // -- CONTAGEM REGRESSIVA DOS 30 MINUTOS --
   clearInterval(countdownInterval);
   countdownInterval = setInterval(() => {
     let now = Date.now();
@@ -172,43 +172,39 @@ function iniciarContador(startTime) {
 }
 
 // -- SUCESSO E FALHA --
-socket.on("accessDenied", () => {
-  // Transforma o fundo verde em vermelho vivo instantaneamente e gera a distorção visual
+socket.on("accessDenied", (soundIndex) => {
   document.body.classList.add("glitch-active", "error-state");
   
-  let randomSound = audiosDenied[Math.floor(Math.random() * audiosDenied.length)];
-  randomSound.currentTime = 0; 
-  randomSound.play().catch(e => console.warn(e));
+  // Pega exatamente o mesmo som sorteado no servidor
+  let syncSound = audiosDenied[soundIndex];
+  syncSound.currentTime = 0; 
+  syncSound.play().catch(e => console.warn(e));
   
   setTimeout(() => {
-    // Retorna ao verde padrão e reseta os inputs após 2 segundos
     document.body.classList.remove("glitch-active", "error-state");
     inputs.forEach(i => i.value = "");
     inputs[0].focus();
-    emitPassword(); // Limpa o estado nos outros terminais também
   }, 2000);
 });
 
 socket.on("accessGranted", () => {
-  ativarSucesso();
+  ativarSucesso(); // O nome da função foi corrigido aqui!
 });
 
-function activarSucesso() {
+function ativarSucesso() {
   clearInterval(countdownInterval);
-  clearInterval(decodeInterval); // Interrompe a decodificação hacker
+  clearInterval(decodeInterval); 
   
   document.body.classList.remove("enigma-mode");
-  document.body.classList.add("success"); // Transforma o fundo em branco total
+  document.body.classList.add("success"); 
   
   startScreen.style.display = "none";
   video1.style.display = "none";
   video2.style.display = "none";
   enigmaScreen.style.display = "block";
   
-  // Desliga os áudios de glitch de fundo
   audiosGlitch.forEach(a => a.pause());
   
-  // Toca os efeitos de vitória em sequência
   audioGranted.currentTime = 0;
   audioGranted.play().catch(e => console.warn(e));
   audioGranted.onended = () => {
