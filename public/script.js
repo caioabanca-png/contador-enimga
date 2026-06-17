@@ -12,7 +12,17 @@ const timerEl = document.getElementById("timer");
 const inputs = document.querySelectorAll(".pwd-input");
 const btnSubmit = document.getElementById("btn-submit");
 
-const audiosGlitch = [document.getElementById("audio-glitch2"), document.getElementById("audio-glitch3")];
+const audioBeep = document.getElementById("audio-beep");
+const audioBomb = document.getElementById("audio-bomb");
+const audioFinal = document.getElementById("audio-final");
+
+// Lista de sons de fundo para tocar em loop sequencial
+const bgSounds = [
+  document.getElementById("audio-glitch2"), 
+  document.getElementById("audio-glitch3"),
+  audioBeep
+];
+
 const audiosDenied = [
   document.getElementById("audio-denied1"), 
   document.getElementById("audio-denied2"), 
@@ -23,7 +33,9 @@ const audioUnlock = document.getElementById("audio-unlock");
 
 let countdownInterval;
 let decodeInterval; 
-let isInitiator = false; // Descobre qual tela clicou no Iniciar
+let isInitiator = false; 
+let currentBgSoundIndex = 0;
+let finalCountdownPlayed = false; // Controla se a trilha dos 20s já tocou
 
 btnAdmin.addEventListener("click", () => {
   let pwd = prompt("Permissão necessária. Digite a senha:");
@@ -46,7 +58,18 @@ function emitPassword() {
 inputs.forEach((input, index) => {
   input.addEventListener("input", (e) => {
     input.value = input.value.replace(/[^0-9]/g, '');
-    if (input.value && index < inputs.length - 1) inputs[index + 1].focus();
+    
+    // Se digitou algo e não é o último campo, vai pro próximo
+    if (input.value && index < inputs.length - 1) {
+      inputs[index + 1].focus();
+    } 
+    // AUTO-SUBMIT: Se digitou algo e é o ÚLTIMO campo, envia na hora!
+    else if (input.value && index === inputs.length - 1) {
+      emitPassword();
+      checkPassword();
+      return; // Para a execução para não dar duplo envio
+    }
+    
     emitPassword(); 
   });
   input.addEventListener("keydown", (e) => {
@@ -71,7 +94,7 @@ socket.on("updatePassword", (pwd) => {
 });
 
 btnStart.addEventListener("click", () => {
-  isInitiator = true; // Avisa que esta tela foi a mestre que iniciou
+  isInitiator = true; 
   socket.emit("startVideo");
 });
 
@@ -95,7 +118,6 @@ socket.on("playVideo", () => {
   startScreen.style.display = "none";
   video1.style.display = "block"; 
   
-  // Se esta TV NÃO foi a que clicou em INICIAR, o vídeo roda mudo.
   if (!isInitiator) {
     video1.muted = true;
     video2.muted = true;
@@ -114,10 +136,25 @@ socket.on("playVideo", () => {
   };
 });
 
-// -- CRONÔMETRO --
+// -- CRONÔMETRO E TRILHA SONORA --
 socket.on("startTimer", (startTime) => {
   iniciarContador(startTime);
 });
+
+// Função que faz o loop infinito dos áudios de fundo
+function tocarProximoFundo() {
+  if (!document.body.classList.contains("enigma-mode")) return; // Para se acabou o jogo
+  if (finalCountdownPlayed) return; // Para se entrou nos 20s finais
+  
+  let audio = bgSounds[currentBgSoundIndex];
+  audio.currentTime = 0;
+  audio.play().catch(e => console.warn(e));
+  
+  audio.onended = () => {
+    currentBgSoundIndex = (currentBgSoundIndex + 1) % bgSounds.length;
+    tocarProximoFundo(); // Chama o próximo quando esse terminar
+  };
+}
 
 function iniciarContador(startTime) {
   video1.style.display = "none";
@@ -136,11 +173,10 @@ function iniciarContador(startTime) {
     }
   });
 
-  // Dá o play no áudio de fundo. (Requer o clique prévio na TV)
-  audiosGlitch.forEach(audio => {
-    audio.currentTime = 0; 
-    audio.play().catch(e => console.warn("Clique na TV para o áudio funcionar!", e));
-  });
+  // Inicia a sequência de áudios de fundo
+  currentBgSoundIndex = 0;
+  finalCountdownPlayed = false;
+  tocarProximoFundo();
   
   clearInterval(decodeInterval);
   decodeInterval = setInterval(() => {
@@ -157,11 +193,37 @@ function iniciarContador(startTime) {
   countdownInterval = setInterval(() => {
     let now = Date.now();
     let elapsed = now - startTime;
-    let remaining = (30 * 60 * 1000) - elapsed;
+    let remaining = (30 * 60 * 1000) - elapsed; // 30 minutos em milissegundos
     
+    // Gatilho dos 20 segundos finais!
+    if (remaining <= 20000 && remaining > 0 && !finalCountdownPlayed) {
+      finalCountdownPlayed = true;
+      
+      // Pausa qualquer glitch/beep que estiver tocando
+      bgSounds.forEach(a => { a.pause(); });
+      
+      // Sincroniza o áudio de tensão baseado no tempo exato
+      let audioOffset = 20 - (remaining / 1000); 
+      audioFinal.currentTime = audioOffset > 0 ? audioOffset : 0;
+      audioFinal.play().catch(e => console.warn(e));
+    }
+    
+    // EXPLOSÃO - Fim do tempo
     if (remaining <= 0) {
       clearInterval(countdownInterval);
+      clearInterval(decodeInterval);
       timerEl.innerText = "00:00";
+      
+      // Para a trilha de tensão e toca a bomba
+      audioFinal.pause();
+      audioBomb.currentTime = 0;
+      audioBomb.play().catch(e => console.warn(e));
+      
+      // Trava os inputs e joga a tela num erro de caos visual
+      inputs.forEach(i => i.disabled = true);
+      document.body.classList.remove("enigma-mode");
+      document.body.classList.add("glitch-active", "error-state");
+      
       return;
     }
 
@@ -175,7 +237,7 @@ function iniciarContador(startTime) {
 socket.on("accessDenied", (soundIndex) => {
   document.body.classList.add("glitch-active", "error-state");
   
-  // Pega exatamente o mesmo som sorteado no servidor
+  // Toca o som sequenciado recebido do servidor (0, 1 ou 2)
   let syncSound = audiosDenied[soundIndex];
   syncSound.currentTime = 0; 
   syncSound.play().catch(e => console.warn(e));
@@ -188,7 +250,7 @@ socket.on("accessDenied", (soundIndex) => {
 });
 
 socket.on("accessGranted", () => {
-  ativarSucesso(); // O nome da função foi corrigido aqui!
+  ativarSucesso(); 
 });
 
 function ativarSucesso() {
@@ -203,7 +265,10 @@ function ativarSucesso() {
   video2.style.display = "none";
   enigmaScreen.style.display = "block";
   
-  audiosGlitch.forEach(a => a.pause());
+  // Desliga todos os barulhos de tensão/bomba
+  bgSounds.forEach(a => a.pause());
+  audioFinal.pause();
+  audioBomb.pause();
   
   audioGranted.currentTime = 0;
   audioGranted.play().catch(e => console.warn(e));

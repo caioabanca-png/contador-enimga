@@ -15,7 +15,8 @@ let defaultState = {
   timerStarted: false,
   startTime: null,
   solved: false,
-  currentPwd: "" 
+  currentPwd: "",
+  errorIndex: -1 // Adicionado para controlar a sequência dos sons de erro
 };
 
 let gameState = { ...defaultState };
@@ -50,9 +51,9 @@ io.on("connection", (socket) => {
       io.emit("accessGranted");
     } else if (!gameState.solved) {
       gameState.currentPwd = "";
-      // Sorteia o som de erro no servidor (0, 1 ou 2) e manda para todos
-      let randomSoundIndex = Math.floor(Math.random() * 3);
-      io.emit("accessDenied", randomSoundIndex);
+      // Avança para o próximo som na sequência (0, 1 ou 2)
+      gameState.errorIndex = (gameState.errorIndex + 1) % 3;
+      io.emit("accessDenied", gameState.errorIndex);
     }
   });
 
