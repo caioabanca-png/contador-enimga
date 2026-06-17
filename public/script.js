@@ -23,6 +23,11 @@ const bgSounds = [
   audioBeep
 ];
 
+// ABAIXANDO O VOLUME DOS SONS DE FUNDO (0.3 = 30% do volume)
+bgSounds.forEach(audio => {
+  if(audio) audio.volume = 0.3; 
+});
+
 const audiosDenied = [
   document.getElementById("audio-denied1"), 
   document.getElementById("audio-denied2"), 
@@ -35,7 +40,7 @@ let countdownInterval;
 let decodeInterval; 
 let isInitiator = false; 
 let currentBgSoundIndex = 0;
-let finalCountdownPlayed = false; // Controla se a trilha dos 20s já tocou
+let finalCountdownPlayed = false; 
 
 btnAdmin.addEventListener("click", () => {
   let pwd = prompt("Permissão necessária. Digite a senha:");
@@ -67,7 +72,7 @@ inputs.forEach((input, index) => {
     else if (input.value && index === inputs.length - 1) {
       emitPassword();
       checkPassword();
-      return; // Para a execução para não dar duplo envio
+      return; 
     }
     
     emitPassword(); 
@@ -143,8 +148,8 @@ socket.on("startTimer", (startTime) => {
 
 // Função que faz o loop infinito dos áudios de fundo
 function tocarProximoFundo() {
-  if (!document.body.classList.contains("enigma-mode")) return; // Para se acabou o jogo
-  if (finalCountdownPlayed) return; // Para se entrou nos 20s finais
+  if (!document.body.classList.contains("enigma-mode")) return; 
+  if (finalCountdownPlayed) return; 
   
   let audio = bgSounds[currentBgSoundIndex];
   audio.currentTime = 0;
@@ -152,7 +157,7 @@ function tocarProximoFundo() {
   
   audio.onended = () => {
     currentBgSoundIndex = (currentBgSoundIndex + 1) % bgSounds.length;
-    tocarProximoFundo(); // Chama o próximo quando esse terminar
+    tocarProximoFundo(); 
   };
 }
 
@@ -193,16 +198,14 @@ function iniciarContador(startTime) {
   countdownInterval = setInterval(() => {
     let now = Date.now();
     let elapsed = now - startTime;
-    let remaining = (30 * 60 * 1000) - elapsed; // 30 minutos em milissegundos
+    let remaining = (30 * 60 * 1000) - elapsed; 
     
     // Gatilho dos 20 segundos finais!
     if (remaining <= 20000 && remaining > 0 && !finalCountdownPlayed) {
       finalCountdownPlayed = true;
       
-      // Pausa qualquer glitch/beep que estiver tocando
       bgSounds.forEach(a => { a.pause(); });
       
-      // Sincroniza o áudio de tensão baseado no tempo exato
       let audioOffset = 20 - (remaining / 1000); 
       audioFinal.currentTime = audioOffset > 0 ? audioOffset : 0;
       audioFinal.play().catch(e => console.warn(e));
@@ -214,12 +217,10 @@ function iniciarContador(startTime) {
       clearInterval(decodeInterval);
       timerEl.innerText = "00:00";
       
-      // Para a trilha de tensão e toca a bomba
       audioFinal.pause();
       audioBomb.currentTime = 0;
       audioBomb.play().catch(e => console.warn(e));
       
-      // Trava os inputs e joga a tela num erro de caos visual
       inputs.forEach(i => i.disabled = true);
       document.body.classList.remove("enigma-mode");
       document.body.classList.add("glitch-active", "error-state");
@@ -237,7 +238,6 @@ function iniciarContador(startTime) {
 socket.on("accessDenied", (soundIndex) => {
   document.body.classList.add("glitch-active", "error-state");
   
-  // Toca o som sequenciado recebido do servidor (0, 1 ou 2)
   let syncSound = audiosDenied[soundIndex];
   syncSound.currentTime = 0; 
   syncSound.play().catch(e => console.warn(e));
@@ -265,7 +265,6 @@ function ativarSucesso() {
   video2.style.display = "none";
   enigmaScreen.style.display = "block";
   
-  // Desliga todos os barulhos de tensão/bomba
   bgSounds.forEach(a => a.pause());
   audioFinal.pause();
   audioBomb.pause();
