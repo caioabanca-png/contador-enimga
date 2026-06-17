@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Terminal_</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  
+  <div id="start-screen">
+    <button id="btn-start" class="glitch-text">INICIAR_SISTEMA</button>
+  </div>
+
+  <video id="intro-video" src="/faz_o_vídeo_seguindo_fielmente (1).mp4"></video>
+
+  <div id="enigma-screen" style="display: none;">
+    <div id="timer" class="glitch-text">30:00</div>
+    <div class="inputs">
+      <input type="text" maxlength="1" class="pwd-input" autocomplete="off">
+      <input type="text" maxlength="1" class="pwd-input" autocomplete="off">
+      <input type="text" maxlength="1" class="pwd-input" autocomplete="off">
+      <input type="text" maxlength="1" class="pwd-input" autocomplete="off">
+      <input type="text" maxlength="1" class="pwd-input" autocomplete="off">
+      <input type="text" maxlength="1" class="pwd-input" autocomplete="off">
+    </div>
+    <button id="btn-submit">ENVIAR_CÓDIGO</button>
+  </div>
+
+  <audio id="audio-glitch2" src="/soundreality-glitch-effect-2-530924.mp3" loop></audio>
+  <audio id="audio-glitch3" src="/soundreality-glitch-effect-3-530928.mp3" loop></audio>
+  <audio id="audio-denied1" src="/avast-ameaca-detectada.mp3"></audio>
+  <audio id="audio-denied2" src="/dragon-studio-evil-laughter-353177.mp3"></audio>
+  <audio id="audio-denied3" src="/freesound_community-access-denied-102628.mp3"></audio>
+  <audio id="audio-granted" src="/freesound_community-access-granted-87075.mp3"></audio>
+  <audio id="audio-unlock" src="/dragon-studio-heavy-door-unlocking-515258.mp3"></audio>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/script.js"></script>
+</body>
+</html>

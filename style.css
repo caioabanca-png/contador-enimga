@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+body {
+  background-color: #050505;
+  color: #0f0;
+  font-family: 'Share Tech Mono', monospace;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  overflow: hidden;
+}
+
+video {
+  display: none;
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+#enigma-screen {
+  text-align: center;
+  z-index: 10;
+}
+
+#timer {
+  font-size: 150px;
+  color: #ff003c; /* Cor base do timer baseada na sua imagem */
+  text-shadow: 0 0 20px #ff003c;
+  margin-bottom: 50px;
+}
+
+.inputs {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-bottom: 30px;
+}
+
+.pwd-input {
+  width: 50px;
+  height: 70px;
+  background: transparent;
+  border: none;
+  border-bottom: 4px solid #0f0;
+  color: #0f0;
+  font-size: 50px;
+  text-align: center;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.pwd-input:focus { outline: none; border-bottom-color: #fff; }
+
+button {
+  background: transparent;
+  color: #0f0;
+  border: 2px solid #0f0;
+  padding: 15px 30px;
+  font-size: 24px;
+  cursor: pointer;
+  font-family: 'Share Tech Mono', monospace;
+  transition: 0.3s;
+}
+
+button:hover { background: #0f0; color: #000; }
+
+/* Animação de Glitch Básica */
+.glitch-active {
+  animation: glitch-skew 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+}
+
+@keyframes glitch-skew {
+  0% { transform: skew(0deg); }
+  20% { transform: skew(-10deg); }
+  40% { transform: skew(10deg); }
+  60% { transform: skew(-5deg); }
+  80% { transform: skew(5deg); }
+  100% { transform: skew(0deg); }
+}
+
+/* Estado de Sucesso */
+body.success { background-color: #001a00; }
+body.success #timer { color: #fff; text-shadow: 0 0 20px #0f0; }
+body.success .pwd-input { border-bottom-color: #fff; color: #fff; }
