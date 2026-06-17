@@ -25,7 +25,7 @@ const bgSounds = [
 
 // ABAIXANDO O VOLUME DOS SONS DE FUNDO (0.3 = 30% do volume)
 bgSounds.forEach(audio => {
-  if(audio) audio.volume = 0.3; 
+  if(audio) audio.volume = 0.6; 
 });
 
 const audiosDenied = [
