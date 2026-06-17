@@ -15,7 +15,7 @@ const btnSubmit = document.getElementById("btn-submit");
 const audioBeep = document.getElementById("audio-beep");
 const audioBomb = document.getElementById("audio-bomb");
 const audioFinal = document.getElementById("audio-final");
-const audioCreepy = document.getElementById("audio-creepy"); // NOVO: Música de terror
+const audioCreepy = document.getElementById("audio-creepy"); 
 
 // Lista de sons de fundo para tocar em loop sequencial
 const bgSounds = [
@@ -24,11 +24,11 @@ const bgSounds = [
   audioBeep
 ];
 
-// Configurando o volume dos áudios de fundo
+// Configurando o volume dos áudios
 bgSounds.forEach(audio => {
   if(audio) audio.volume = 0.3; 
 });
-if(audioCreepy) audioCreepy.volume = 0.4; // Deixa o terror um pouco mais presente que o glitch
+if(audioCreepy) audioCreepy.volume = 0.4; 
 
 const audiosDenied = [
   document.getElementById("audio-denied1"), 
@@ -40,6 +40,7 @@ const audioUnlock = document.getElementById("audio-unlock");
 
 let countdownInterval;
 let decodeInterval; 
+let creepyTimeout; // NOVO: Controla o intervalo de 10 min da música de terror
 let isInitiator = false; 
 let currentBgSoundIndex = 0;
 let finalCountdownPlayed = false; 
@@ -146,6 +147,7 @@ socket.on("startTimer", (startTime) => {
   iniciarContador(startTime);
 });
 
+// Função do Fundo (Glitches e Beeps)
 function tocarProximoFundo() {
   if (!document.body.classList.contains("enigma-mode")) return; 
   if (finalCountdownPlayed) return; 
@@ -158,6 +160,21 @@ function tocarProximoFundo() {
     currentBgSoundIndex = (currentBgSoundIndex + 1) % bgSounds.length;
     tocarProximoFundo(); 
   };
+}
+
+// Função da Música de Terror
+function tocarCreepy() {
+  if (!document.body.classList.contains("enigma-mode") || finalCountdownPlayed) return;
+  
+  if (audioCreepy) {
+    audioCreepy.currentTime = 0;
+    audioCreepy.play().catch(e => console.warn("Erro audio creepy:", e));
+    
+    // Quando a música acabar, espera exatamente 10 minutos (600.000 ms) para tocar de novo
+    audioCreepy.onended = () => {
+      creepyTimeout = setTimeout(tocarCreepy, 600000); 
+    };
+  }
 }
 
 function iniciarContador(startTime) {
@@ -181,6 +198,10 @@ function iniciarContador(startTime) {
   finalCountdownPlayed = false;
   tocarProximoFundo();
   
+  // Inicia a música de terror LOGO DE CARA!
+  clearTimeout(creepyTimeout);
+  tocarCreepy();
+  
   clearInterval(decodeInterval);
   decodeInterval = setInterval(() => {
     inputs.forEach(input => {
@@ -201,20 +222,15 @@ function iniciarContador(startTime) {
     let minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
     let seconds = Math.floor((remaining % (1000 * 60)) / 1000);
 
-    // GATILHO: A cada 10 minutos exatos (Quando o cronômetro bater 20:00 e 10:00)
-    if ((minutes === 20 || minutes === 10) && seconds === 0) {
-      if (audioCreepy) {
-        audioCreepy.currentTime = 0;
-        audioCreepy.play().catch(e => console.warn(e));
-      }
-    }
-
     // Gatilho dos 20 segundos finais
     if (remaining <= 20000 && remaining > 0 && !finalCountdownPlayed) {
       finalCountdownPlayed = true;
       
       bgSounds.forEach(a => { a.pause(); });
-      if (audioCreepy) audioCreepy.pause(); // Pausa o terror se estiver tocando
+      
+      // Cancela o próximo toque da música de terror e pausa se estiver tocando
+      clearTimeout(creepyTimeout);
+      if (audioCreepy) audioCreepy.pause(); 
       
       let audioOffset = 20 - (remaining / 1000); 
       audioFinal.currentTime = audioOffset > 0 ? audioOffset : 0;
@@ -227,8 +243,10 @@ function iniciarContador(startTime) {
       clearInterval(decodeInterval);
       timerEl.innerText = "00:00";
       
-      audioFinal.pause();
+      clearTimeout(creepyTimeout);
       if (audioCreepy) audioCreepy.pause();
+      
+      audioFinal.pause();
       audioBomb.currentTime = 0;
       audioBomb.play().catch(e => console.warn(e));
       
@@ -277,6 +295,8 @@ function ativarSucesso() {
   bgSounds.forEach(a => a.pause());
   audioFinal.pause();
   audioBomb.pause();
+  
+  clearTimeout(creepyTimeout);
   if (audioCreepy) audioCreepy.pause();
   
   audioGranted.currentTime = 0;
