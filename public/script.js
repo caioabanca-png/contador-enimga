@@ -26,9 +26,9 @@ const bgSounds = [
 
 // Configurando o volume dos áudios
 bgSounds.forEach(audio => {
-  if(audio) audio.volume = 0.3; 
+  if(audio) audio.volume = 0.1; 
 });
-if(audioCreepy) audioCreepy.volume = 0.4; 
+if(audioCreepy) audioCreepy.volume = 0.1; 
 
 const audiosDenied = [
   document.getElementById("audio-denied1"), 
