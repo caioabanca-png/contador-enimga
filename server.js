@@ -5,6 +5,13 @@ const io = require("socket.io")(http);
 
 app.use(express.static("public"));
 
+// Força o servidor a enviar o index.html quando acessar a URL principal
+const path = require('path');
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 let gameState = {
   videoPlayed: false,
   timerStarted: false,
