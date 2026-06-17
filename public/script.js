@@ -3,7 +3,11 @@ const socket = io();
 const btnStart = document.getElementById("btn-start");
 const btnAdmin = document.getElementById("btn-admin");
 const startScreen = document.getElementById("start-screen");
-const video = document.getElementById("intro-video");
+
+// Agora temos dois vídeos separados
+const video1 = document.getElementById("intro-video-1");
+const video2 = document.getElementById("intro-video-2");
+
 const enigmaScreen = document.getElementById("enigma-screen");
 const timerEl = document.getElementById("timer");
 const inputs = document.querySelectorAll(".pwd-input");
@@ -69,23 +73,22 @@ socket.on("updateState", (state) => {
 // -- REPRODUÇÃO E SINCRONIZAÇÃO DE VÍDEO --
 socket.on("playVideo", () => {
   startScreen.style.display = "none";
-  video.style.display = "block";
-  video.src = "/video1.mp4";
+  video1.style.display = "block"; // Mostra apenas o primeiro
   
-  // TENTA tocar com som primeiro. Se o navegador bloquear, roda mutado na TV secundária
-  video.play().catch(e => {
-    console.warn("Autoplay bloqueado nesta TV. Rodando vídeo sem som para manter sincronia visual.");
-    video.muted = true; 
-    video.play().catch(err => console.error("Erro fatal no vídeo:", err));
+  video1.play().catch(e => {
+    console.error("ERRO: O navegador bloqueou o vídeo porque ninguém clicou nesta tela antes do jogo começar!", e);
   });
   
-  video.onended = () => {
-    if (video.src.includes("video1.mp4")) {
-      video.src = "/video2.mp4";
-      video.play().catch(e => console.warn(e));
-    } else {
-      socket.emit("videoEnded");
-    }
+  // Quando o vídeo 1 acabar
+  video1.onended = () => {
+    video1.style.display = "none"; // Esconde o 1
+    video2.style.display = "block"; // Mostra o 2
+    video2.play().catch(e => console.error(e));
+  };
+
+  // Quando o vídeo 2 acabar
+  video2.onended = () => {
+    socket.emit("videoEnded");
   };
 });
 
@@ -95,11 +98,12 @@ socket.on("startTimer", (startTime) => {
 });
 
 function iniciarContador(startTime) {
-  video.style.display = "none";
+  // Esconde os dois vídeos por segurança
+  video1.style.display = "none";
+  video2.style.display = "none";
   startScreen.style.display = "none";
   enigmaScreen.style.display = "block";
   
-  // Garante que todas as TVs comecem o ruído do zero no exato mesmo milissegundo
   audiosGlitch.forEach(audio => {
     audio.currentTime = 0; 
     audio.play().catch(e => console.warn("Erro ao tocar glitch:", e));
@@ -125,15 +129,13 @@ function iniciarContador(startTime) {
 
 // -- SUCESSO E FALHA --
 socket.on("accessDenied", () => {
-  // Adiciona o glitch E o fundo vermelho vivo
   document.body.classList.add("glitch-active", "error-state");
   
   let randomSound = audiosDenied[Math.floor(Math.random() * audiosDenied.length)];
-  randomSound.currentTime = 0; // Sincroniza o áudio de erro
+  randomSound.currentTime = 0; 
   randomSound.play().catch(e => console.warn(e));
   
   setTimeout(() => {
-    // Tira o glitch e o vermelho, voltando ao verde hacker
     document.body.classList.remove("glitch-active", "error-state");
     inputs.forEach(i => i.value = "");
     inputs[0].focus();
@@ -149,7 +151,8 @@ function ativarSucesso() {
   document.body.classList.add("success");
   
   startScreen.style.display = "none";
-  video.style.display = "none";
+  video1.style.display = "none";
+  video2.style.display = "none";
   enigmaScreen.style.display = "block";
   
   audiosGlitch.forEach(a => a.pause());
